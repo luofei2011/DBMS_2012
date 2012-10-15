@@ -236,10 +236,63 @@ int readInt(){
     return size;    
 }
 */
+
+//find two """;
+bool findTwoQuotation(string str){
+    if((str[0] == '"') && (str[str.size()-1] == '"'))
+               return true;                    
+    else
+        return false;    
+}
+
+bool isInt(string str){
+     /*for(int i=0; i<str.size(); i++){
+             if((str[i] >= "0") && (str[i] <= "9"))
+                        return true;
+             else 
+                  return false;        
+     } */
+     return true;    
+}
+
+bool isChar(string str){
+     if(findTwoQuotation(str))
+         return true;
+     else
+         return false;     
+}
+
+bool isDate(string str){
+     if(findTwoQuotation(str))
+         if((str[4] == '-') && (str[7] == '-'))
+                    return true;
+     else
+         return false;     
+}
+
+bool isTime(string str){
+     if(findTwoQuotation(str))
+         if((str[2] == ':') && (str[5] == ':'))
+                    return true;
+     else
+         return false;     
+}
+
+bool isDouble(string str){
+     /*for(int i=0; i<str.size(); i++){
+             if((str[i] >= '.') && (str[i] <= '9'))
+                        return true;
+             else 
+                  return false;        
+     }    */
+     return true;  
+}
+
 bool insertInto(char name_of_table[],string str){
      int table_num =0;
      int each_num = 0;
      int size_of_table=0;
+     int num_of_property = 0;
      //string str_rest = "";
      /*************order recorde each property***************/
      int sort_of_table[20]={0};
@@ -281,6 +334,7 @@ bool insertInto(char name_of_table[],string str){
                                   if((read_temp[l_3]=='I') && (read_temp[l_3+1]=='N') && (read_temp[l_3+2]=='T')){
                                           sort_of_table[pos++] = 1;
                                           l_3 += 2;
+                                          num_of_property++;
                                           table_num +=4;
                                           each_num = 4;
                                           binary_dictionary.write((char*)&each_num,4);
@@ -289,6 +343,7 @@ bool insertInto(char name_of_table[],string str){
                                   else if((read_temp[l_3]=='D') && (read_temp[l_3+1]=='A') && (read_temp[l_3+2]=='T') && (read_temp[l_3+3]=='E')){
                                           sort_of_table[pos++] = 3;
                                           l_3 += 3;
+                                          num_of_property++;
                                           table_num +=10;
                                           each_num = 10;
                                           binary_dictionary.write((char*)&each_num,4);
@@ -297,6 +352,7 @@ bool insertInto(char name_of_table[],string str){
                                   else if((read_temp[l_3]=='T') && (read_temp[l_3+1]=='I') && (read_temp[l_3+2]=='M') && (read_temp[l_3+3]=='E')){
                                           sort_of_table[pos++] = 4;
                                           l_3 += 3;
+                                          num_of_property++;
                                           table_num +=8;
                                           each_num = 8;
                                           binary_dictionary.write((char*)&each_num,4);
@@ -305,6 +361,7 @@ bool insertInto(char name_of_table[],string str){
                                   else if((read_temp[l_3]=='D') && (read_temp[l_3+1]=='O') && (read_temp[l_3+2]=='U') && (read_temp[l_3+3]=='B') && (read_temp[l_3+4]=='L') && (read_temp[l_3+5]=='E')){
                                           sort_of_table[pos++] = 5;
                                           l_3 += 5;
+                                          num_of_property++;
                                           table_num +=8;
                                           each_num = 8;
                                           binary_dictionary.write((char*)&each_num,4);
@@ -316,6 +373,7 @@ bool insertInto(char name_of_table[],string str){
                                                             l_3++;
                                        }
                                        l_3+=3;
+                                       num_of_property++;
                                        num_of_int[pos_int] = atoi(num_of_char);
                                        table_num += num_of_int[pos_int];
                                        each_num = num_of_int[pos_int];
@@ -333,6 +391,8 @@ bool insertInto(char name_of_table[],string str){
                           }
                           binary_dictionary.seekg(-table_num,ios_base::cur);
                           binary_dictionary.write((char*)&table_num,4);
+                          binary_dictionary.seekg(-4,ios_base::cur);
+                          binary_dictionary.write((char*)&num_of_property,4);
                           table_num=0;
                           binary_dictionary.close();
                           pos = 0;
@@ -341,7 +401,11 @@ bool insertInto(char name_of_table[],string str){
             }
             binary_model.seekg(size_of_table-8,ios_base::cur);        
      }
-     binary_model.close();    
+     binary_model.close(); 
+     
+     memset(addr_of_database,0,256);
+     memset(addr_of_model,0,sizeof(addr_of_model));
+        
      if(is_correct_table_name == 'Y'){
            string::size_type pos_of_l;
            string::size_type pos_of_r;
@@ -349,24 +413,79 @@ bool insertInto(char name_of_table[],string str){
            pos_of_l = str.find('(');
            pos_of_r = str.find(')');
            if((pos_of_l != str.npos) && (pos_of_r != str.npos)){
+                        /********get table_name.dat then write in it*********/
+                        char addr_of_database[256];
+                        strcpy(addr_of_database,name_of_database_for_table);
+                        char *name_of_table_dat = strcat(name_of_table,".dat");
+                        char *addr_of_model = strcat(addr_of_database,name_of_table_dat);
+                        /***************************************************/
+                        fstream binary_insert;
+                        binary_insert.open(addr_of_model,ios::out | ios::binary | ios::app);
+                        
+                        
+                        char is_end_loop = 'N';
                         string temp_values = "";
                         string insert_values = str.substr(pos_of_l+1,pos_of_r-pos_of_l-1);
                         cout << insert_values << endl; 
+                        //at least 2 property
                         pos_seg = insert_values.find_first_of(',');
-                        while(pos_seg != insert_values.npos){
+                        //while(pos_seg != insert_values.npos){
+                        for(int i=0; i<num_of_property; i++){
                                       temp_values = insert_values.substr(0,pos_seg);
                                       cout << temp_values << endl;
-                                      
+                                     // for(int i=0;i<num_of_property;i++){
+                                              switch(sort_of_table[pos]){
+                                                         case 1:
+                                                              if(isInt(temp_values)){
+                                                                      int len_of_int = atoi(temp_values.c_str());
+                                                                      binary_insert.write((char*)&len_of_int,4);
+                                                              }
+                                                              break;
+                                                         case 2:
+                                                              if(isChar(temp_values))
+                                                                      binary_insert.write(temp_values.substr(temp_values.find('"')+1,temp_values.size()-2).c_str(),num_of_int[pos_int++]);                        
+                                                              break;
+                                                         case 3:
+                                                              if(isDate(temp_values))
+                                                                      binary_insert.write(temp_values.substr(temp_values.find('"')+1,temp_values.size()-2).c_str(),10);                        
+                                                              break;
+                                                         case 4:
+                                                              if(isTime(temp_values))
+                                                                      binary_insert.write(temp_values.substr(temp_values.find('"')+1,temp_values.size()-2).c_str(),8);
+                                                              break;
+                                                         case 5:
+                                                              if(isDouble(temp_values)){
+                                                                      double len_of_double =  atof(temp_values.c_str());
+                                                                      binary_insert.write((char*)&len_of_double,8);                    
+                                                              }
+                                                              break;
+                                                         default:
+                                                                 cout << "error" <<endl;
+                                              }
+                                              pos++;                  
+                                      //}
                                       
                                       //prepare for while loop
                                       pos_of_l = pos_seg;
                                       temp_values = "";
-                                      insert_values = insert_values.substr(pos_seg+1);
-                                      pos_seg = 0;
-                                      pos_seg = insert_values.find_first_of(',');                            
+                                      if(is_end_loop == 'N'){
+                                                     insert_values = insert_values.substr(pos_seg+1);
+                                                     pos_seg = 0;
+                                                     pos_seg = insert_values.find_first_of(','); 
+                                                     if(pos_seg != insert_values.npos) 
+                                                                continue;
+                                                     else{
+                                                         pos_seg = insert_values.size(); 
+                                                         is_end_loop = 'Y';
+                                                     }
+                                      } 
+                                      else
+                                          break;                            
                         }
+                        binary_insert.close();
                         cout << insert_values <<endl;            
            }
+           
            cout << "yes" <<endl;
            cout << "sort_of_table:" << sizeof(sort_of_table) << endl;
            cout << "num_of_int:" << sizeof(num_of_int) << endl;
@@ -380,6 +499,7 @@ bool insertInto(char name_of_table[],string str){
           cout << "Wrong Table Name!" <<endl;
           return false;     
      } 
+     num_of_property=0;
          
 }
 
