@@ -4,27 +4,12 @@
 #include<string>
 #include<cstring>
 #include<io.h>
+#include "GlobalVariables.h"
+#include "select.h"
 using namespace std;
-
-
-string message;
-char *name_of_database;
-char name_of_database_for_table[256] = "E:\\Mysql\\DBMS_2012\\DBMS_NAME\\";
-//List all created databasename
-string database_name_list_clear = "";
-ofstream table_file;
-string now_used_database = "";
-string model_content = "";
-/********************two common used avi*****************************/
-string null_of_in = " ";
-string enter_return = "\n";
-/***************a list of some flags*********************************/
-char is_used_database = 'N';
-char is_in_table = 'N';
 
 //enum sort {INT, CHAR, DATE, FLOAT, DOUBLE,TIME};
 
- 
 void InitDatabaseName(){
      string database_name_list = "";
      int i = 0;
@@ -135,7 +120,16 @@ int propertyStore(string str){
         
 }
 
-bool formatMatch(string str){
+int returnNum(string str){
+    int sum = 0;
+    for(int i=0; i<str.size(); i++)
+            if(str[i] == ',')
+                      sum ++;  
+     return (sum+1);  
+}
+
+bool formatMatch(string str,char table_name[]){
+     cout << table_name << endl;
     int size = 0;
     int size_of_model_content = 0;
     string sort_num;
@@ -143,13 +137,23 @@ bool formatMatch(string str){
     string property_name = "";
     string tableBody = "";
     string property_sort = "";
+    string store_for_property_name = "";
     string::size_type position_left;
     string::size_type position_right;
     position_left = str.find("(");
     position_right = str.find(")");
     tableBody = str.substr(position_left+1);
     size = tableBody.size();
+    int sum = returnNum(tableBody);
+    
+    /********write dictionary.dat for select*************/
+    int each_num = 0;
+    fstream binary_dictionary;
+    binary_dictionary.open("dictionary.dat",ios::out | ios::binary | ios::app);
+    binary_dictionary.write((char*)&sum,4);
+    binary_dictionary.write(table_name,8);
     if((position_left != str.npos) && (position_right != str.npos)){
+                      
                       int m =0;
                       for(m;m<size;m++){
                                  for(m; m<size; m++){
@@ -159,7 +163,8 @@ bool formatMatch(string str){
                                                  break;
                                          }            
                                  }
-                                 
+                                 store_for_property_name += property_name;
+                                 store_for_property_name += " ";
                                  for(m; m<size; m++){
                                         if((tableBody[m] != ',') && (tableBody[m] != '(')){
                                                  if((tableBody[m] != ' ') && (tableBody[m] != ')')){
@@ -179,7 +184,31 @@ bool formatMatch(string str){
                                                }
                                                else
                                                    break;
-                                        }                 
+                      
+                                        } 
+                                        each_num = atoi(sort_num.c_str());
+                                        binary_dictionary.write((char*)&each_num,4);
+                                        each_num = 0;                
+                                 }
+                                 else if(property_sort == "INT"){
+                                      each_num = 4;
+                                      binary_dictionary.write((char*)&each_num,4);
+                                      each_num = 0;     
+                                 }
+                                 else if(property_sort == "DATE"){
+                                      each_num = 10;
+                                      binary_dictionary.write((char*)&each_num,4);
+                                      each_num = 0;     
+                                 }
+                                 else if(property_sort == "TIME"){
+                                      each_num = 8;
+                                      binary_dictionary.write((char*)&each_num,4);
+                                      each_num = 0;     
+                                 }
+                                 else if(property_sort == "DOUBLE"){
+                                      each_num = 8;
+                                      binary_dictionary.write((char*)&each_num,4);
+                                      each_num = 0;     
                                  }
                                  //sort_num_int = atoi(sort_num.c_str());
                                  //cout << sort_num <<endl; 
@@ -206,8 +235,18 @@ bool formatMatch(string str){
          cout<<"ERROR"<<endl;
          return false;     
     }
-    //string str_cpy = str;
-    //cout << str_cpy.c_str() <<endl;
+    binary_dictionary.close();
+    /***********write property_name.dat file for select*****************/
+    fstream binary_property;
+    binary_property.open("property_name.dat",ios::out | ios::binary | ios::app);
+    //only property_name's length except table_name's length
+    int len_of_property = store_for_property_name.size();
+    binary_property.write((char*)&len_of_property,4);
+    binary_property.write(table_name,8);
+    binary_property.write(store_for_property_name.c_str(),store_for_property_name.size());
+    binary_property.close();
+    store_for_property_name = "";
+    
     size_of_model_content = model_content.size();
     char addr_of_database[256];
     strcpy(addr_of_database,name_of_database_for_table);
@@ -264,7 +303,7 @@ bool isChar(string str){
 
 bool isDate(string str){
      if(findTwoQuotation(str))
-         if((str[4] == '-') && (str[7] == '-'))
+//         if((str[4] == "-") && (str[7] == "-"))
                     return true;
      else
          return false;     
@@ -272,7 +311,7 @@ bool isDate(string str){
 
 bool isTime(string str){
      if(findTwoQuotation(str))
-         if((str[2] == ':') && (str[5] == ':'))
+//         if((str[2] == ":") && (str[5] == ":"))
                     return true;
      else
          return false;     
@@ -289,8 +328,6 @@ bool isDouble(string str){
 }
 
 bool insertInto(char name_of_table[],string str){
-     int table_num =0;
-     int each_num = 0;
      int size_of_table=0;
      int num_of_property = 0;
      //string str_rest = "";
@@ -311,9 +348,8 @@ bool insertInto(char name_of_table[],string str){
      strcpy(addr_of_database,name_of_database_for_table);
      char *addr_of_model = strcat(addr_of_database,"model.dat");
      fstream binary_model;
-     fstream binary_dictionary;
      binary_model.open(addr_of_model,ios::in | ios::binary); 
-     binary_dictionary.open("dictionary.dat",ios::out | ios::binary | ios::app);
+     
      while(!binary_model.eof()){
             //size_of_table = readInt();
             //cout << "size:" << size_of_table << endl;
@@ -331,41 +367,26 @@ bool insertInto(char name_of_table[],string str){
                           is_correct_table_name = 'Y';
                           binary_model.read(read_temp,size_of_table-8);
                           for(int l_3=0; l_3<size_of_table-1; l_3++){
+                                  
                                   if((read_temp[l_3]=='I') && (read_temp[l_3+1]=='N') && (read_temp[l_3+2]=='T')){
                                           sort_of_table[pos++] = 1;
                                           l_3 += 2;
                                           num_of_property++;
-                                          table_num +=4;
-                                          each_num = 4;
-                                          binary_dictionary.write((char*)&each_num,4);
-                                          each_num=0;
                                   }
                                   else if((read_temp[l_3]=='D') && (read_temp[l_3+1]=='A') && (read_temp[l_3+2]=='T') && (read_temp[l_3+3]=='E')){
                                           sort_of_table[pos++] = 3;
                                           l_3 += 3;
                                           num_of_property++;
-                                          table_num +=10;
-                                          each_num = 10;
-                                          binary_dictionary.write((char*)&each_num,4);
-                                          each_num=0;
                                   }
                                   else if((read_temp[l_3]=='T') && (read_temp[l_3+1]=='I') && (read_temp[l_3+2]=='M') && (read_temp[l_3+3]=='E')){
                                           sort_of_table[pos++] = 4;
                                           l_3 += 3;
                                           num_of_property++;
-                                          table_num +=8;
-                                          each_num = 8;
-                                          binary_dictionary.write((char*)&each_num,4);
-                                          each_num=0;
                                   }
                                   else if((read_temp[l_3]=='D') && (read_temp[l_3+1]=='O') && (read_temp[l_3+2]=='U') && (read_temp[l_3+3]=='B') && (read_temp[l_3+4]=='L') && (read_temp[l_3+5]=='E')){
                                           sort_of_table[pos++] = 5;
                                           l_3 += 5;
                                           num_of_property++;
-                                          table_num +=8;
-                                          each_num = 8;
-                                          binary_dictionary.write((char*)&each_num,4);
-                                          each_num=0;
                                   }
                                   else if((read_temp[l_3] < 'A') && (read_temp[l_3] != '\0')){
                                        while(read_temp[l_3] != 'C'){
@@ -375,10 +396,6 @@ bool insertInto(char name_of_table[],string str){
                                        l_3+=3;
                                        num_of_property++;
                                        num_of_int[pos_int] = atoi(num_of_char);
-                                       table_num += num_of_int[pos_int];
-                                       each_num = num_of_int[pos_int];
-                                       binary_dictionary.write((char*)&each_num,4);
-                                       each_num=0;
                                        pos_int++;
                                        //Empty the intermediate variables
                                        memset(num_of_char,0,4);
@@ -387,19 +404,15 @@ bool insertInto(char name_of_table[],string str){
                                        sort_of_table[pos++] = 2;
                                   }
                                   else
-                                      continue;             
+                                       continue;            
                           }
-                          binary_dictionary.seekg(-table_num,ios_base::cur);
-                          binary_dictionary.write((char*)&table_num,4);
-                          binary_dictionary.seekg(-4,ios_base::cur);
-                          binary_dictionary.write((char*)&num_of_property,4);
-                          table_num=0;
-                          binary_dictionary.close();
                           pos = 0;
                           pos_int = 0;
+                          
                           break;
             }
-            binary_model.seekg(size_of_table-8,ios_base::cur);        
+            binary_model.seekg(size_of_table-8,ios_base::cur); 
+            //memset(table_name,0,9);       
      }
      binary_model.close(); 
      
@@ -426,13 +439,11 @@ bool insertInto(char name_of_table[],string str){
                         char is_end_loop = 'N';
                         string temp_values = "";
                         string insert_values = str.substr(pos_of_l+1,pos_of_r-pos_of_l-1);
-                        cout << insert_values << endl; 
                         //at least 2 property
                         pos_seg = insert_values.find_first_of(',');
                         //while(pos_seg != insert_values.npos){
                         for(int i=0; i<num_of_property; i++){
                                       temp_values = insert_values.substr(0,pos_seg);
-                                      cout << temp_values << endl;
                                      // for(int i=0;i<num_of_property;i++){
                                               switch(sort_of_table[pos]){
                                                          case 1:
@@ -482,16 +493,7 @@ bool insertInto(char name_of_table[],string str){
                                       else
                                           break;                            
                         }
-                        binary_insert.close();
-                        cout << insert_values <<endl;            
-           }
-           
-           cout << "yes" <<endl;
-           cout << "sort_of_table:" << sizeof(sort_of_table) << endl;
-           cout << "num_of_int:" << sizeof(num_of_int) << endl;
-           for(int i=0; i<5; i++){
-                   cout << sort_of_table[i] <<endl;
-                   cout << num_of_int[i] << endl;
+                        binary_insert.close();           
            }
            return true;                   
      }
@@ -503,6 +505,68 @@ bool insertInto(char name_of_table[],string str){
          
 }
 
+//Is the correct select format?
+bool is_correct_select(string str){
+     transform(str.begin(),str.end(), str.begin(), ::toupper);
+     if((str.find("FROM") != str.npos) && (str.find("WHERE") != str.npos))
+                          return true;
+     else{
+          cout << "Syntax error!" << endl;
+          return false;
+     }     
+}
+
+bool loop_for_tableName(string tableName){
+     char tableNameChar[9] = {0};
+     char table_name[9] = {0};
+     int size_of_table = 0;
+     char name[9]={0};
+     int i_1 = 0;
+     for(int i=0; i<tableName.size(); i++){
+             if(tableName[i] != ' ')
+                             tableNameChar[i_1++] = tableName[i];        
+     }     
+
+     char addr_of_database[256];
+     strcpy(addr_of_database,name_of_database_for_table);
+     char *addr_of_model = strcat(addr_of_database,"model.dat");
+     
+     fstream binary_tableModel;
+     binary_tableModel.open(addr_of_model,ios::in | ios::binary);
+     
+     while(!binary_tableModel.eof()){
+            binary_tableModel.read((char*)&size_of_table,4);
+            //cout << "size:" << size_of_table << endl;
+            binary_tableModel.read(name,8);
+            int i_2 = 0;
+            for(int i=0; i<9; i++){
+                    if(name[i] != '0')
+                               table_name[i_2++]=name[i];        
+            } 
+            if(strcmp(table_name,tableNameChar) == 0){
+                          binary_tableModel.close();
+                          return true;
+            }
+            memset(table_name,0,9);
+            binary_tableModel.seekg(size_of_table-8,ios_base::cur); 
+     }
+     binary_tableModel.close();
+     return false;
+     
+}
+
+//Is the correct table name?
+bool is_correct_table_name(string str){
+     string table_name = str.substr(str.find("from")+5,str.find("where")-str.find("from")-6);
+     if(loop_for_tableName(table_name))
+                                       return true;
+     else{
+          cout << "Please enter correct table name!" << endl;
+          return false;
+     }
+          
+}
+
 int judgeSort(string str)
 {
       string str_copy = str;
@@ -511,15 +575,18 @@ int judgeSort(string str)
       string use = "USE";
       string show_database = "SHOW DATABASE";
       string insert_into = "INSERT INTO";
+      string select = "SELECT";
       string table_in = str.substr(0,12);
       string database_in = str.substr(0,15); 
       string use_in = str.substr(0,3);
       string insert_into_in = str.substr(0,11);
+      string select_in = str.substr(0,6);
       transform(table_in.begin(),table_in.end(), table_in.begin(), ::toupper);
       transform(database_in.begin(),database_in.end(), database_in.begin(), ::toupper);
       transform(use_in.begin(),use_in.end(), use_in.begin(), ::toupper);
       transform(str_copy.begin(),str_copy.end(), str_copy.begin(), ::toupper); 
       transform(insert_into_in.begin(),insert_into_in.end(), insert_into_in.begin(), ::toupper);
+      transform(select_in.begin(),select_in.end(), select_in.begin(), ::toupper); 
       
       
       //create table name (property sort...)
@@ -527,10 +594,11 @@ int judgeSort(string str)
                   if(is_used_database == 'Y'){
                             InitTempModel();
                             //cout << is_used_database <<endl;
-                            int i = 13,j=0;
+                            int i = 13,j=0,k=0;
                             //set a flag for find "(";
                             char is_find_l = 'N';
                             char name_of_table[100]={0};
+                            char name_of_table_property[100]={0};
                             string table_in_last = "";
                             //substr(0,end) or substr(X,X)get address X length is X's char
                             table_in_last = str.substr(13,str.find('\n'));
@@ -539,10 +607,15 @@ int judgeSort(string str)
                                      if(table_in_last[i] == '(')
                                                  is_find_l = 'Y';
                                      if((is_find_l == 'N') && (table_in_last[i] != ' ')){
-                                                   name_of_table[j++] = table_in_last[i]; //i j not sync
+                                                   name_of_table[j] = table_in_last[i]; //i j not sync
+                                                   name_of_table_property[k++] = table_in_last[i];
                                                    model_content += table_in_last[i];
+                                                   j++;
                                      }
                                      else if(is_find_l == 'Y'){
+                                          if(strlen(name_of_table_property) <= 8)
+                                                   for(int i=0; i<8-strlen(name_of_table_property); i++)
+                                                           name_of_table_property[k++] = '0';
                                           //create table use .dat file
                                           name_of_table[j++] = '.';
                                           name_of_table[j++] = 'd';
@@ -562,7 +635,7 @@ int judgeSort(string str)
                                  return 0;     
                             }
                             // cout << name_of_table <<endl;
-                            if(formatMatch(str)){
+                            if(formatMatch(str,name_of_table_property)){
                                                  createTable(name_of_table);     
                                                  cout << "CREATE TABLE: " << name_of_table << " SUCCESS!" <<endl; 
                             } 
@@ -653,7 +726,8 @@ int judgeSort(string str)
                                                             table_name_ch[len_2++] = table_name[len_1];         
                                    }
                                    //searchFromModel(table_name_char);
-                                   insertInto(table_name_ch,str);                  
+                                   insertInto(table_name_ch,str); 
+                                   cout << "Insert data success!" << endl;                 
                  }
                  else{
                       cout << "Grammer Error!" <<endl;     
@@ -664,6 +738,20 @@ int judgeSort(string str)
                 cout << "Please enter 'use database_name' first!" <<endl;
                 return 0;        
            }
+      }
+      else if(select == select_in){
+           if(is_used_database = 'Y'){
+                               if(is_correct_select(str) && is_correct_table_name(str)){
+                                            string target_property = str.substr(7,str.find("from")-8);
+                                            string table_name = str.substr(str.find("from")+5,str.find("where")-str.find("from")-6);
+                                            string select_condition = str.substr(str.find("where")+6); 
+                                            select_function(target_property,table_name,select_condition);                                                                 
+                               }
+           }
+           else{
+                cout << "Please enter 'use database_name' first!" <<endl;
+                return 0; 
+           }          
       }
       else {
            cout << "ERROR" <<endl;
