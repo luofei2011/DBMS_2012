@@ -131,7 +131,7 @@ int returnNum(string str){
 }
 
 bool formatMatch(string str,char table_name[]){
-     cout << table_name << endl;
+     //cout << table_name << endl;
     int size = 0;
     int size_of_model_content = 0;
     string sort_num;
@@ -147,6 +147,8 @@ bool formatMatch(string str,char table_name[]){
     tableBody = str.substr(position_left+1);
     size = tableBody.size();
     int sum = returnNum(tableBody);
+    int sortsArr[20] = {0};
+    int sort_pos = 0;
     
     /********write dictionary.dat for select*************/
     int each_num = 0;
@@ -154,10 +156,9 @@ bool formatMatch(string str,char table_name[]){
     binary_dictionary.open("dictionary.dat",ios::out | ios::binary | ios::app);
     binary_dictionary.write((char*)&sum,4);
     binary_dictionary.write(table_name,8);
+    
     if((position_left != str.npos) && (position_right != str.npos)){
-                      
-                      int m =0;
-                      for(m;m<size;m++){
+                      for(int m=0;m<size;m++){
                                  for(m; m<size; m++){
                                          if((tableBody[m] != ' ') && (tableBody[m] != ','))
                                                  property_name += tableBody[m];
@@ -190,27 +191,32 @@ bool formatMatch(string str,char table_name[]){
                                         } 
                                         each_num = atoi(sort_num.c_str());
                                         binary_dictionary.write((char*)&each_num,4);
-                                        each_num = 0;                
+                                        each_num = 0; 
+                                        sortsArr[sort_pos++] = 2;             
                                  }
                                  else if(property_sort == "INT"){
                                       each_num = 4;
                                       binary_dictionary.write((char*)&each_num,4);
-                                      each_num = 0;     
+                                      each_num = 0;  
+                                      sortsArr[sort_pos++] = 1;   
                                  }
                                  else if(property_sort == "DATE"){
                                       each_num = 10;
                                       binary_dictionary.write((char*)&each_num,4);
                                       each_num = 0;     
+                                      sortsArr[sort_pos++] = 4;
                                  }
                                  else if(property_sort == "TIME"){
                                       each_num = 8;
                                       binary_dictionary.write((char*)&each_num,4);
-                                      each_num = 0;     
+                                      each_num = 0; 
+                                      sortsArr[sort_pos++] = 5;    
                                  }
                                  else if(property_sort == "DOUBLE"){
                                       each_num = 8;
                                       binary_dictionary.write((char*)&each_num,4);
-                                      each_num = 0;     
+                                      each_num = 0;  
+                                      sortsArr[sort_pos++] = 3;   
                                  }
                                  //sort_num_int = atoi(sort_num.c_str());
                                  //cout << sort_num <<endl; 
@@ -238,6 +244,14 @@ bool formatMatch(string str,char table_name[]){
          return false;     
     }
     binary_dictionary.close();
+    
+    fstream sort;
+    sort.open("property_sort.dat",ios::out | ios::binary | ios::app);
+    sort.write((char*)&sum,4);
+    sort.write(table_name,8);
+    for(int i=0; i<sort_pos; i++)
+            sort.write((char*)&sortsArr[i],4);
+    sort.close();
     /***********write property_name.dat file for select*****************/
     fstream binary_property;
     binary_property.open("property_name.dat",ios::out | ios::binary | ios::app);
@@ -279,20 +293,19 @@ int readInt(){
 */
 
 bool insertInto(char name_of_table[],string str){
-     /*
-     int p_num = propertyNum(str.substr(str.find('(')));
+     
+     int p_num = returnNum(str.substr(str.find('(')));
      string nameOfTable = name_of_table;
-     UseDictionary(nameOfTrable);
-     if(p_num < _length[0]){
+     UseDictionary(nameOfTable);
+     if(p_num != _length[0]){
               memset(_length,0,100);
               cout << "insert into error!" << endl;
               return false;         
      }
-     memset(_length,0,100);
      else{
               
      
-     */
+     memset(_length,0,100);
      int size_of_table=0;
      int num_of_property = 0;
      //string str_rest = "";
@@ -380,7 +393,6 @@ bool insertInto(char name_of_table[],string str){
             //memset(table_name,0,9);       
      }
      binary_model.close(); 
-     
      memset(addr_of_database,0,256);
      memset(addr_of_model,0,sizeof(addr_of_model));
         
@@ -548,7 +560,7 @@ bool insertInto(char name_of_table[],string str){
           return false;     
      } 
      num_of_property=0;
-         
+     }   
 }
 
 //Is the correct select format?
@@ -843,30 +855,44 @@ int judgeSort(string str)
       else if(select == select_in){
            if(is_used_database = 'Y'){
                                string table_name = str.substr(str.find("from")+5,str.find("where")-str.find("from")-6);
-                               if(table_name.find('.') != table_name.npos){
+                               string project_pro = str.substr(7,str.find("from")-8);
+                               if(project_pro.find('.') != project_pro.npos){
                                      is_projection = 'Y';
                                      string tableName = "";
+                                     string project_table = project_pro.substr(0,project_pro.find('.'));
                                      char is_end = 'N';
-                                     int pos = table_name.find(',');
-                                     for(int i=0; i<table_name.size(); i++){
-                                             tableName = table_name.substr(0,pos);
+                                     int pos = project_pro.find(',');
+                                     
+                                     int pos_l = 0;
+                                     int pos_r = 10;
+                                     
+                                     for(int i=0; i<project_pro.size(); i++){
+                                             tableName = project_pro.substr(0,pos);
                                              if(tableName.size() > 0){
                                                     tableName = removeBlank(tableName);
-                                                    cout << tableName << "    ";
+                                                    //project_table = tableName.substr(0,tableName.find('.'));
+                                                    string _project_table = tableName.substr(0,tableName.find('.'));
+                                                    UseProperty_name(_project_table);
+                                                    if(!project_table.compare(_project_table))               
+                                                           project_pos[pos_r++] = Position_(_position,tableName.substr(tableName.find('.')+1));                                           
+                                                    else
+                                                        project_pos[pos_l++] = Position_(_position,tableName.substr(tableName.find('.')+1));
+                                                    _position = "";
+                                                           
+                                                    
                                              }
                                              if(is_end == 'N'){
-                                                       table_name = table_name.substr(table_name.find(',')+1);
-                                                       if(table_name.find(',') != table_name.npos)
+                                                       project_pro = project_pro.substr(project_pro.find(',')+1);
+                                                       if(project_pro.find(',') != project_pro.npos)
                                                               continue;
                                                        else{ 
                                                              is_end = 'Y';
-                                                             pos = table_name.size();
+                                                             pos = project_pro.size();
                                                        } 
                                              }
                                              else 
                                                   break;
                                      } 
-                                     cout << endl;
                                      string _condition = str.substr(str.find("where")+6);
                                      Equi_Join(_condition);                        
                                }
@@ -919,7 +945,7 @@ int judgeSort(string str)
       }
       else {
            cout << "ERROR" <<endl;
-           return 0;     
+           return 0;  
       }
       str="";
 }

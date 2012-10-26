@@ -8,6 +8,9 @@ using namespace std;
 /***********a new idea**********************/
 int _length[200] = {0}; //support 200 properties
 string _position = "";   //return the position of each property
+int _sort_[200] = {0};
+int sizeofBlock = 1024;  //read by block 4K
+int project_pos[100] = {0};
 
 //str1 = target_property; str2 = table_name 
 bool is_correct_property(string str1,string str2){
@@ -142,6 +145,44 @@ int UseDictionary(string tableName){
      return 0;
 }
 
+int UseProperty_sort(string tableName){
+     int num_of_property = 0;
+     char name[9] = {0};
+     char table_name[9] = {0};
+
+     fstream binary_dictionary;
+     binary_dictionary.open("property_sort.dat",ios::in | ios::binary);
+     
+     while(!binary_dictionary.eof()){
+              
+              binary_dictionary.read((char*)&num_of_property,4);
+              binary_dictionary.read(name,8);
+              int i_1 = 0; 
+              for(int i =0; i<9; i++){
+                      if(name[i] != '0')
+                                 table_name[i_1++] = name[i];
+              }
+              if(strcmp(tableName.c_str(),table_name) == 0){
+                      //
+                      _sort_[0] = num_of_property;
+                      for(int i=1; i<=num_of_property; i++){
+                              int _num;
+                              binary_dictionary.read((char*)&_num,4);
+                              _sort_[i] = _num;
+                              _num = 0;        
+                      }   
+                      break;                                     
+              }                         
+              else
+                  binary_dictionary.seekg(num_of_property*4,ios_base::cur);
+              memset(table_name,0,9);
+              memset(name,0,9);
+              num_of_property = 0;
+     }
+     binary_dictionary.close();
+     return 0;
+}
+
 string InttoString(int i){
        char  csTemp[20]; 
        string  str; 
@@ -235,11 +276,19 @@ bool is_time(char ch[]){
 string removeQuotation(string str){
        string::size_type front;
        string::size_type rear;
-       front = str.find('"');
-       str = str.substr(front+1);
-       rear = str.find('"');
-       str = str.substr(0,rear);
-       return str;       
+       if(str.find('"') != str.npos){
+              front = str.find('"');
+              str = str.substr(front+1);
+              if(str.find('"') != str.npos){
+                    rear = str.find('"');
+                    str = str.substr(0,rear);
+                    return str;
+              }
+              else 
+                   return str;
+       }
+       else
+           return str;       
 }
 
 void coutResult(string str,int length){
@@ -378,11 +427,101 @@ bool query_from_table(string target_property,string table_name,string property_n
                          is_find = 'N';
                          intoTemp = "";
               }                   
-     }     
-     binary_t.close();     
-     coutResult(target_property,intoLength);
+     }
      
+     binary_t.close();     
+     //coutResult(target_property,intoLength);  
      binary_n.close();
+     coutResult(target_property,intoLength);
+     return true;
+}
+
+string intercepteArr(char source[],int pos,int length){
+       string result = "";
+       for(int i=0; i<length; i++)
+               result += source[pos++];       
+       return result;
+}
+
+bool mycompare(string str1,string str2){
+     int i=0;
+     for(i; i<str1.size(); i++)
+            if(str1[i] != str2[i])
+                       return false;
+     if(str2[i] == '\0')
+                return true;
+     
+}
+
+bool queryByBlock(string target_property,string table_name,string property_name,string values){
+     
+     /*************open temp.dat, table_name.dat*************/
+     char addr_of_database[256];
+     char addr_of_temp[256];
+     strcpy(addr_of_database,name_of_database_for_table);
+     strcpy(addr_of_temp,name_of_database_for_table);
+     char *ch = strdup(table_name.data());
+     char *addr_of_table = strcat(ch,".dat");
+     char *addr_of_table_name = strcat(addr_of_database,addr_of_table);
+     char *addr_of_temp_dat = strcat(addr_of_temp,"temp.dat");
+     
+     fstream binary_n;
+     fstream binary_t;
+     binary_n.open(addr_of_table_name,ios::in | ios::binary);
+     binary_t.open(addr_of_temp_dat,ios::out | ios::binary | ios::app);
+     
+     UseDictionary(table_name);      
+     int num = _length[0];
+     UseProperty_name(table_name);
+     int pos_1 = Position_(_position,target_property);
+     int pos_2 = Position_(_position,property_name);
+     UseProperty_sort(table_name);
+     
+     int Length = returnSum(_length);
+     string intoTemp = "";
+     int intoLength = 0;
+     char is_find = 'N';
+     
+     char temp[1024] = {0};
+     values = removeQuotation(values);
+
+     while(!binary_n.eof()){
+            binary_n.read(temp,Length);
+            for(int i=0; i<strlen(temp); i++){
+                    int k=1;
+                    while(_length[k]){//get all property
+                           //
+                           if(pos_1 == k){
+                               intoTemp = intercepteArr(temp,i,_length[k]); 
+                               intoLength = _length[k];
+                           }
+                           else if(pos_2 ==k){
+                               //
+                               string con_temp = intercepteArr(temp,i,_length[k]);
+                               if(mycompare(values,con_temp))
+                                        is_find = 'Y';
+                               con_temp = "";
+                           }
+                           
+                           if(is_find == 'Y'){
+                                      binary_t.write(intoTemp.c_str(),intoLength);
+                                      is_find = 'N';
+                                      intoTemp = "";
+                                     // intoLength = 0;           
+                           }
+                                      
+                           i += _length[k];
+                           k++;
+                    }        
+            }
+            memset(temp,0,1024);
+     }
+    // _position = "";
+    // memset(_length,0,200);
+     memset(_sort_,0,200);
+     binary_t.close();
+     binary_n.close();
+     coutResult(target_property,intoLength);
      return true;
 }
 
@@ -409,7 +548,8 @@ bool select_function(string str1,string str2,string str3){
                                      table_property = temp_condition.substr(0,temp_condition.find('='));
                                 values = temp_condition.substr(temp_condition.find('=')+1);
                                 property_name = table_property;  
-                                query_from_table(str1,str2,property_name,values);
+                                //query_from_table(str1,str2,property_name,values);
+                                queryByBlock(str1,str2,property_name,values);
                                 break;
                            case 1://NOT
                                 compare_con = deal_condition_next(str3);
@@ -499,7 +639,7 @@ string TraversalTable(string tableName,string Col){
                 memset(temp,0,100);
                 binary.seekg(rear,ios_base::cur);                     
        } 
-       memset(_length,0,100);
+       memset(_length,0,200);
        _position = "";
        binary.close();
        return result;   
@@ -547,9 +687,22 @@ void WriteTemp(string tableName1,int conter,string tableName2,int pos){
      UseProperty_name(tableName2);
      int table_len2 = returnSum(_length);
      binary_2.seekg((pos-1)*table_len2,ios_base::cur);
+     char is_finded = 'N';
+     
      for(int i=1; i<_length[0]+1; i++){
              if(is_projection == 'Y'){
-                              
+                  for(int j=0; j<10; j++){
+                          if(project_pos[j] == i){
+                                  is_finded = 'Y';
+                                  binary_2.read(temp,_length[i]);
+                                  result += temp;
+                                  result += " ";
+                                  memset(temp,0,100);                  
+                          }       
+                  } 
+                  if(is_finded == 'N')
+                               binary_2.seekg(_length[i],ios_base::cur);
+                  is_finded = 'N';           
              }
              else{
                   binary_2.read(temp,_length[i]);
@@ -560,7 +713,7 @@ void WriteTemp(string tableName1,int conter,string tableName2,int pos){
      }
      result += "| ";
      /***********interrupt***********/
-     memset(_length,0,100);
+     memset(_length,0,200);
      _position = "";
      UseDictionary(tableName1);
      UseProperty_name(tableName1);
@@ -568,7 +721,18 @@ void WriteTemp(string tableName1,int conter,string tableName2,int pos){
      binary_1.seekg((conter-1)*table_len1,ios_base::cur);
      for(int i=1; i<_length[0]+1; i++){
              if(is_projection == 'Y'){
-                              
+                  for(int j=10; j<20; j++){
+                          if(project_pos[j] == i){
+                                  is_finded = 'Y';
+                                  binary_1.read(temp,_length[i]);
+                                  result += temp;
+                                  result += " ";
+                                  memset(temp,0,100);                  
+                          }        
+                  } 
+                  if(is_finded == 'N')
+                               binary_1.seekg(_length[i],ios_base::cur);
+                  is_finded = 'N';           
              }
              else{
                   binary_1.read(temp,_length[i]);
@@ -579,7 +743,6 @@ void WriteTemp(string tableName1,int conter,string tableName2,int pos){
      }
      cout << result << endl;
      
-     is_projection = 'N';
      binary_1.close();
      binary_2.close();
      
@@ -642,7 +805,7 @@ void Equi_Join_(string tableName1,string Col1,string tableName2,string Col2){
                 memset(temp,0,100);
                 binary.seekg(rear,ios_base::cur);                
      }
-     memset(_length,0,100);
+     memset(_length,0,200);
      _position = "";
      binary.close();
               
@@ -662,6 +825,7 @@ void Equi_Join(string condition){
      string tableName2 = _con2.substr(0,_con2.find('.'));
      string Col2 = _con2.substr(_con2.find('.')+1);
      Equi_Join_(tableName1,Col1,tableName2,Col2);
+     is_projection = 'N';
           
 }
 
@@ -691,7 +855,7 @@ string keyValue(char table_name[]){
                }
                binary.seekg(offset-length,ios_base::cur);                   
        } 
-       memset(_length,0,100);
+       memset(_length,0,200);
        binary.close();
        return result;     
 }
@@ -826,7 +990,7 @@ bool updateTable(string tableName,string set_condition,string find_condition)
         binary_.write(set_values.c_str(),_length[pos_1]);
     }
     _position = "";
-    memset(_length,0,100);
+    memset(_length,0,200);
 
     binary_.close();
 
@@ -992,7 +1156,7 @@ bool deleteTable(string tableName,string del_condition)
     }
     
     _position = "";
-    memset(_length,0,100);
+    memset(_length,0,200);
 
     binary_.close();
 
