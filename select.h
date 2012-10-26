@@ -717,6 +717,7 @@ bool updateTable(string tableName,string set_condition,string find_condition)
 
         find_col = find_condition.substr(0,find_condition.find('='));
         find_values = find_condition.substr(find_condition.find('=')+1);
+        //find_values = removeQuotation(find_values);
         set_col=set_condition.substr(0,set_condition.find('='));
         set_values=set_condition.substr(set_condition.find('=')+1);
         set_values = removeQuotation(set_values);
@@ -753,18 +754,6 @@ bool updateTable(string tableName,string set_condition,string find_condition)
 
         for(int i=1; i<num+1; i++)
         {
-
-            /*if(i == pos_1)
-            {
-                int length_1 = _length[i];
-                intoLength = length_1;
-
-                char _target[100] = {0};
-                binary_n.read(_target,length_1);
-                cout<<_target;
-                intoTemp += _target;
-
-            }*/
             if(i == pos_2)
             {
                 int length_2 = _length[i];
@@ -835,14 +824,6 @@ bool updateTable(string tableName,string set_condition,string find_condition)
     {
         binary_.seekg(count[i],ios::beg);
         binary_.write(set_values.c_str(),_length[pos_1]);
-        //
-        //char _temp[100] = {0};
-        //binary_.seekg(-(_intoLength+_length[pos_1]),ios_base::cur);
-        //bianry_.read(_temp,returnSum(_length));
-        //string into_temp = _temp;
-        //memset(_temp,0,100);
-        //
-        //writeIntoTemp(into_temp)
     }
     _position = "";
     memset(_length,0,100);
@@ -887,3 +868,134 @@ void discribleTable(string tableName){
      } 
      binary_model.close();    
 }
+
+bool deleteTable(string tableName,string del_condition)
+{
+    string set_col="";
+    //string property_name = "";
+    string set_values="";
+    char is_fit='N';
+    char is_find='N';
+    UseDictionary(tableName);
+    UseProperty_name(tableName);
+
+
+    if(del_condition.find('=') != del_condition.npos){
+        is_fit='Y';
+        set_col=del_condition.substr(0,del_condition.find('='));
+        set_values=del_condition.substr(del_condition.find('=')+1);
+        set_values = removeQuotation(set_values);
+        //query_from_table(set_col,tableName,find_col,find_values);
+    }
+    
+    char addr_of_database[256];
+    strcpy(addr_of_database,name_of_database_for_table);
+    char *ch = strdup(tableName.data());
+    char *addr_of_table = strcat(ch,".dat");
+    char *addr_of_table_name = strcat(addr_of_database,addr_of_table);
+
+    fstream binary_n;
+    binary_n.open(addr_of_table_name,ios::in | ios::binary);
+
+    int pos_2=Position_(_position,set_col);
+    int num = _length[0];
+    //int len=0;
+
+    //string intoTemp = "";
+    int intoLength = 0;
+    int count[200]= {0};
+    int m=0;
+    int key =0;
+    for(int i=1; i<pos_2; i++)
+    {
+        intoLength+=_length[i];
+    }
+    int _intoLength = intoLength;
+    while(!binary_n.eof())
+    {
+
+        for(int i=1; i<num+1; i++)
+        {
+            if(i == pos_2)
+            {
+                int length_2 = _length[i];
+                char _source[100] = {0};
+                binary_n.read(_source,length_2);
+                if(length_2 == 8)
+                {
+                    if(is_double(_source))
+                    {
+                        double _cmp = atof(_source);
+                        if(atof(set_values.c_str()) == _cmp)
+                            is_find = 'Y';
+                    }
+                    else
+                    {
+                        //set_values = removeQuotation(find_values);
+                        if(strcmp(_source,set_values.c_str()) == 0)
+                            is_find = 'Y';
+                    }
+                }
+                else if(length_2 == 4)
+                {
+                    if(is_int(_source))
+                    {
+                        int _cmp = atoi(_source);
+                        if((atoi(set_values.c_str())) == _cmp)
+                            is_find = 'Y';
+                    }
+                    else
+                    {
+                        //find_values = removeQuotation(find_values);
+                        if(strcmp(_source,set_values.c_str()) == 0)
+                            is_find = 'Y';
+                    }
+                }
+                else
+                {
+                    //find_values = removeQuotation(find_values);
+                    if(strcmp(_source,set_values.c_str()) == 0)
+                        is_find = 'Y';
+                }
+
+            }
+            else
+            {
+                int offset = _length[i];
+                binary_n.seekg(offset,ios_base::cur);
+                offset = 0;
+            }
+        }
+
+        if(is_find == 'Y')
+        {
+            //binary_t.write(intoTemp.c_str(),intoLength);
+            key++;
+            count[m++]=intoLength;
+            //binary_n.write(intoTemp.c_str(),intoLength);
+            is_find = 'N';
+           // intoTemp = "";
+        }
+        intoLength+=returnSum(_length);
+    }
+    binary_n.close();
+    
+    fstream binary_;
+    binary_.open(addr_of_table_name,ios::out | ios::binary | ios::in);
+    for(int i=0; i<key; i++)
+    {
+        binary_.seekg(count[i],ios::beg);
+        //binary_.write(set_values.c_str(),_length[pos_1]);
+        string _temp = "";
+        binary_.seekg(-_intoLength,ios_base::cur);
+        binary_.write(_temp.c_str(),returnSum(_length));
+    }
+    
+    _position = "";
+    memset(_length,0,100);
+
+    binary_.close();
+
+
+}
+

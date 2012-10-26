@@ -639,6 +639,21 @@ bool is_correct_table_name(string table_names){
      return false;         
 }
 
+int displayHelp(){
+     ifstream read;
+     char buff[1024];
+     
+     read.open("README.txt");
+     if(!read){
+               cout << "file not exist" << endl;
+               return 0;         
+     }
+     while(read.getline(buff,sizeof(buff)))
+               cout << buff << endl;
+     read.close();
+     return 0;
+}
+
 int judgeSort(string str)
 {
       string str_copy = str;
@@ -651,6 +666,7 @@ int judgeSort(string str)
       string delete_ = "DELETE";
       string update = "UPDATE";
       string discrible = "DISCRIBLE";
+      //string exit = "EXIT";
       string table_in = str.substr(0,12);
       string database_in = str.substr(0,15); 
       string use_in = str.substr(0,3);
@@ -659,6 +675,7 @@ int judgeSort(string str)
       string delete_in = str.substr(0,6);
       string update_in = str.substr(0,6);
       string discrible_in = str.substr(0,9);
+      //string exit_in = str.substr(0,4);
       transform(table_in.begin(),table_in.end(), table_in.begin(), ::toupper);
       transform(database_in.begin(),database_in.end(), database_in.begin(), ::toupper);
       transform(use_in.begin(),use_in.end(), use_in.begin(), ::toupper);
@@ -668,10 +685,13 @@ int judgeSort(string str)
       transform(delete_in.begin(),delete_in.end(), delete_in.begin(), ::toupper);
       transform(update_in.begin(),update_in.end(), update_in.begin(), ::toupper);
       transform(discrible_in.begin(),discrible_in.end(), discrible_in.begin(), ::toupper);
+      //transform(exit_in.begin(),exit_in.end(), exit_in.begin(), ::toupper);
       
       
       //create table name (property sort...)
-      if(table_in == table ) {
+      if(str.compare("help") ==0)
+                displayHelp();
+      else if(table_in == table ) {
                   if(is_used_database == 'Y'){
                             InitTempModel();
                             //cout << is_used_database <<endl;
@@ -870,10 +890,10 @@ int judgeSort(string str)
       }
       else if(delete_.compare(delete_in) == 0){
            string delete_tableName = str.substr(str.find("from")+5,str.find("where")-str.find("from")-6);
-           if(is_correct_table_name(delete_tableName) && is_correct_select(str))
-                   cout << "delete" << endl;
+           if(is_correct_table_name(delete_tableName) && is_correct_select(str)){
                    string delete_condition = str.substr(str.find("where")+6);
-                   //deleteTable(delete_tableName,delete_condition);
+                   deleteTable(delete_tableName,delete_condition);
+           }
                
       }
       else if(update.compare(update_in) == 0){
@@ -904,15 +924,25 @@ int judgeSort(string str)
       str="";
 }
 
-
+bool is_exit(string str){
+     transform(str.begin(),str.end(), str.begin(), ::toupper); 
+     if(str.compare("EXIT") == 0) 
+             return true;
+     return false;   
+}
 
 int main (){
     // cout << name_of_database_for_table[28] <<endl;
     //InitTemp();
     //InitModel();
+    cout << "DBMS_2012 for Windows [version 1.3]" << endl;
+    cout << "版权所有 (c) 2012 HaErbin Insititute of Technology.保留所有权利." << endl;
     InitDatabaseName();
     while(1){
+             cout << ">";
              getline(cin,message);
+             if(is_exit(message))
+                    return 0;
              judgeSort(message);
              message = "";
     }
